@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
 import os
-from google import genai
+import google.genai as genai
 
 load_dotenv()
 
@@ -19,8 +19,12 @@ def health_check():
 
 @app.get("/test-llm")
 def test_llm():
-    response = client.models.generate_content(
-        model="gemini-1.5-flash",
-        contents="Suggest one scenic stop between Pune and Goa."
-    )
-    return {"response": response.text}
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",  # <--- Changed from gemini-1.5-pro
+            contents="Suggest one scenic stop between Pune and Goa."
+        )
+        return {"response": response.text}
+    except Exception as e:
+        # This will help you see the error in the browser/Postman instead of just a 500
+        return {"error": str(e)}
