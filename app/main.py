@@ -1,10 +1,14 @@
-from app.observability.metrics import measure_llm_call
-from app.observability.tracing import generate_request_id
-from app.agents.scenic_stop_agent import ScenicStopAgent
 from fastapi import FastAPI
 from dotenv import load_dotenv
 import os
 import google.genai as genai
+
+from app.observability.tracing import generate_request_id
+from app.services.orchestrator import TravelOrchestrator
+
+# -------------------------------------------------------------------
+# Environment & Client Setup
+# -------------------------------------------------------------------
 
 load_dotenv()
 
@@ -14,50 +18,49 @@ if not API_KEY:
 
 client = genai.Client(api_key=API_KEY)
 
+# -------------------------------------------------------------------
+# FastAPI App
+# -------------------------------------------------------------------
+
 app = FastAPI(title="AI Travel LLMOps")
+
+# -------------------------------------------------------------------
+# Orchestrator (Single Entry Point to Agents)
+# -------------------------------------------------------------------
+
+orchestrator = TravelOrchestrator()
+
+# -------------------------------------------------------------------
+# Health Check
+# -------------------------------------------------------------------
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
-@app.get("/test-llm")
-def test_llm():
-    def llm_call():
-        return client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents="Suggest one scenic stop between Pune and Goa."
-        )
+# -------------------------------------------------------------------
+# Trip Planning Endpoint (Orchestrated, Multi-Agent)
+# -------------------------------------------------------------------
 
-    response, latency, error = measure_llm_call(
-        llm_call,
-        agent_name="scenic_stop_agent"
-    )
-
-    if error:
-        return {"error": str(error)}
-
-    return {
-        "response": response.text,
-        "latency_ms": latency
-    }
-
-agent = ScenicStopAgent()
-
-@app.get("/scenic-stop")
-def scenic_stop(source: str, destination: str):
+@app.get("/plan-trip")
+def plan_trip(
+    source: str,
+    destination: str,
+    preferences: str
+):
     request_id = generate_request_id()
 
-    result = agent.suggest_stop(
+    plan = orchestrator.plan_trip(
         source=source,
         destination=destination,
+        raw_preferences=preferences,
         request_id=request_id
     )
 
     return {
         "request_id": request_id,
-        "result": result
+        "plan": plan
     }
 
-# http://127.0.0.1:8000/scenic-stop?source=Pune&destination=Goa
-
-
+# Example:
+# http://127.0.0.1:8000/plan-trip?source=Pune&destination=Goa&preferences=budget scenic food
