@@ -1,31 +1,55 @@
+# -------------------------------------------------------------------
+# Core Imports
+# -------------------------------------------------------------------
+
 from fastapi import FastAPI
 from dotenv import load_dotenv
 import os
-import google.genai as genai
+
+# -------------------------------------------------------------------
+# Project Imports
+# -------------------------------------------------------------------
 
 from app.observability.tracing import generate_request_id
 from app.services.orchestrator import TravelOrchestrator
+from app.observability.datadog_client import send_metric
 
 # -------------------------------------------------------------------
-# Environment & Client Setup
+# Environment Setup
 # -------------------------------------------------------------------
 
 load_dotenv()
 
-API_KEY = os.getenv("GEMINI_API_KEY")
-if not API_KEY:
-    raise RuntimeError("GEMINI_API_KEY not found")
-
-client = genai.Client(api_key=API_KEY)
+# Validate Gemini API key early
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise RuntimeError("GEMINI_API_KEY not found in environment")
 
 # -------------------------------------------------------------------
 # FastAPI App
 # -------------------------------------------------------------------
 
-app = FastAPI(title="AI Travel LLMOps")
+app = FastAPI(
+    title="AI Travel LLMOps",
+    description="Production-grade, observable multi-agent AI travel assistant",
+    version="1.0.0"
+)
 
 # -------------------------------------------------------------------
-# Orchestrator (Single Entry Point to Agents)
+# Startup Hook (Datadog Integration Test)
+# -------------------------------------------------------------------
+
+@app.on_event("startup")
+def startup_event():
+    print("🚀 Application starting — sending Datadog test metric...")
+    send_metric(
+        metric_name="llm.integration.test",
+        value=1,
+        tags=["env:local", "component:startup"]
+    )
+
+# -------------------------------------------------------------------
+# Orchestrator
 # -------------------------------------------------------------------
 
 orchestrator = TravelOrchestrator()
@@ -39,7 +63,7 @@ def health_check():
     return {"status": "ok"}
 
 # -------------------------------------------------------------------
-# Trip Planning Endpoint (Orchestrated, Multi-Agent)
+# Trip Planning Endpoint
 # -------------------------------------------------------------------
 
 @app.get("/plan-trip")
@@ -63,4 +87,4 @@ def plan_trip(
     }
 
 # Example:
-# http://127.0.0.1:8000/plan-trip?source=Pune&destination=Goa&preferences=budget scenic food
+# http://127.0.0.1:8000/plan-trip?source=Pune&destination=Goa&preferences=budget calm scenic food

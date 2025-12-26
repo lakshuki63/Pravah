@@ -7,10 +7,16 @@ class TravelOrchestrator:
         self.preference_agent = PreferenceAgent()
 
     def plan_trip(self, source, destination, raw_preferences, request_id):
-        preferences = self.preference_agent.parse_preferences(
-            raw_preferences=raw_preferences,
-            request_id=request_id
-        )
+        try:
+            preferences = self.preference_agent.parse_preferences(
+                raw_preferences=raw_preferences,
+                request_id=request_id
+            )
+        except Exception as e:
+            preferences = {
+                "error": "Preference parsing failed",
+                "details": str(e)
+            }
 
         scenic_stop = self.scenic_agent.suggest_stop(
             source=source,
