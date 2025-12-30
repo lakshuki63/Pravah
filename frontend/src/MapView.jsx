@@ -1,3 +1,5 @@
+import { Marker } from "@react-google-maps/api";
+
 import {
   GoogleMap,
   DirectionsRenderer,
@@ -16,31 +18,45 @@ export default function MapView({ source, destination, onRouteLoaded }) {
   });
 
   const [directions, setDirections] = useState(null);
+async function loadRoute() {
+  // 1️⃣ Call backend route API (for metrics + ETA)
+  const routeRes = await fetch(
+    `${import.meta.env.VITE_BACKEND_URL}/route?source=${source}&destination=${destination}`
+  );
+  const routeData = await routeRes.json();
 
-  async function loadRoute() {
-    // 1️⃣ Call backend (Datadog metrics fire here)
-    const res = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/route?source=${source}&destination=${destination}`
-    );
-    const routeData = await res.json();
+  // 2️⃣ Draw Google route
+  const directionsService = new window.google.maps.DirectionsService();
 
-    // 2️⃣ Draw route on map
-    const directionsService = new window.google.maps.DirectionsService();
+  directionsService.route(
+    {
+      origin: source,
+      destination: destination,
+      travelMode: window.google.maps.TravelMode.DRIVING,
+    },
+    async (result, status) => {
+      if (status === "OK") {
+        setDirections(result);
+        onRouteLoaded(routeData);
 
-    directionsService.route(
-      {
-        origin: source,
-        destination: destination,
-        travelMode: window.google.maps.TravelMode.DRIVING,
-      },
-      (result, status) => {
-        if (status === "OK") {
-          setDirections(result);
-          onRouteLoaded(routeData); // pass data up
-        }
+        // 3️⃣ Call AI itinerary AFTER route success
+        const itineraryRes = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/itinerary` +
+            `?source=${source}` +
+            `&destination=${destination}` +
+            `&distance_text=${routeData.distance_text}` +
+            `&duration_text=${routeData.duration_text}`
+        );
+
+        const itineraryJson = await itineraryRes.json();
+        onRouteLoaded((prev) => ({
+          ...prev,
+          itinerary: itineraryJson,
+        }));
       }
-    );
-  }
+    }
+  );
+}
 
   if (!isLoaded) return <p>Loading map…</p>;
 
