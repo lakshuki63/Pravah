@@ -86,5 +86,11 @@ def plan_trip(
         "plan": plan
     }
 
+from app.services.maps_service import get_route
+
+@app.get("/route")
+def route(source: str, destination: str):
+    return get_route(source, destination)
+
 # Example:
 # http://127.0.0.1:8000/plan-trip?source=Pune&destination=Goa&preferences=budget calm scenic food
