@@ -1,28 +1,72 @@
 import { useState } from "react";
+import { useJsApiLoader, Autocomplete } from "@react-google-maps/api";
 import MapView from "./MapView";
 import "./App.css";
 
+// 🔒 MUST be static (important for hooks)
+const MAP_LIBRARIES = ["places"];
+
 export default function App() {
-  const [source, setSource] = useState("Bhandara");
-  const [destination, setDestination] = useState("Mumbai");
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: MAP_LIBRARIES,
+  });
+
+  // Autocomplete instances
+  const [sourceAuto, setSourceAuto] = useState(null);
+  const [destAuto, setDestAuto] = useState(null);
+
+  // Input values
+  const [source, setSource] = useState(null);
+  const [destination, setDestination] = useState(null);
+
+  // Route + itinerary info
   const [routeInfo, setRouteInfo] = useState(null);
+
+  // ⛔ Do NOT render anything until Maps is loaded
+  if (!isLoaded) {
+    return <p>Loading Google Maps…</p>;
+  }
 
   return (
     <div className="app-container">
       <h2 className="app-title">AI Travel Planner</h2>
 
-      {/* Input Section */}
+      {/* Input Section with Autocomplete */}
       <div className="input-row">
-        <input
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-          placeholder="Source"
-        />
-        <input
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          placeholder="Destination"
-        />
+        <Autocomplete
+          onLoad={(auto) => setSourceAuto(auto)}
+          onPlaceChanged={() => {
+            if (!sourceAuto) return;
+            const place = sourceAuto.getPlace();
+            if (place?.formatted_address) {
+              setSource(place.formatted_address);
+            }
+          }}
+        >
+          <input
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            placeholder="Start location"
+          />
+        </Autocomplete>
+
+        <Autocomplete
+          onLoad={(auto) => setDestAuto(auto)}
+          onPlaceChanged={() => {
+            if (!destAuto) return;
+            const place = destAuto.getPlace();
+            if (place?.formatted_address) {
+              setDestination(place.formatted_address);
+            }
+          }}
+        >
+          <input
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
+            placeholder="Destination"
+          />
+        </Autocomplete>
       </div>
 
       {/* Map Section */}
@@ -65,7 +109,7 @@ export default function App() {
 
                 <p className="stop-time">
                   <strong>Recommended Stop:</strong>{" "}
-                  {stop.recommended_stop_time}
+                  {stop.recommended_stop_duration}
                 </p>
               </div>
             ))}
