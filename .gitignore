@@ -1,0 +1,7 @@
+# Environment variables
+.env
+.env.*
+__pycache__/
+node_modules/
+venv/
+.new_ve/
