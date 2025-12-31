@@ -4,13 +4,13 @@
 **Pravah** is an **early-stage, production-ready foundation** for an AI-powered travel planning platform.
 It combines **LLM intelligence**, **real-time maps**, and **deep observability** to demonstrate how a **scalable, reliable AI system** can be built and monitored in practice.
 
-> ⚠️ This project represents the **initial, foundational version of Pravah**, intentionally designed as a **strong technical baseline** rather than a feature-complete product.
+> This project represents the **initial, foundational version of Pravah**, intentionally designed as a **strong technical baseline** rather than a feature-complete product.
 
 ---
 
-## 🌍 What Pravah Does (Current Scope)
+## What Pravah Does (Current Scope)
 
-### 🧭 Travel Planning & Navigation
+###  Travel Planning & Navigation
 
 * User selects **source & destination** using Google Places Autocomplete
 * Visualizes **real driving routes** on Google Maps
@@ -23,7 +23,7 @@ It combines **LLM intelligence**, **real-time maps**, and **deep observability**
 
 ---
 
-## 🤖 AI Intelligence (Gemini)
+##  AI Intelligence (Gemini)
 
 * Uses **Gemini 2.5 Flash** for itinerary generation
 * Structured **JSON-only responses** for reliability
@@ -34,11 +34,11 @@ This layer is intentionally instrumented for **LLMOps observability**, making it
 
 ---
 
-## 🔍 Observability-First Architecture (Datadog)
+##  Observability-First Architecture (Datadog)
 
 Pravah is designed with **production observability as a first-class concern**, even at this early stage.
 
-### 📊 Metrics Emitted
+###  Metrics Emitted
 
 **Backend & API**
 
@@ -62,7 +62,7 @@ Pravah is designed with **production observability as a first-class concern**, e
 
 ---
 
-### 🚨 Detection Rules Implemented
+###  Detection Rules Implemented
 
 * High API error rate
 * High LLM latency
@@ -74,7 +74,7 @@ Each alert is **actionable** and tagged by environment and service.
 
 ---
 
-### 📈 Datadog Dashboards
+### Datadog Dashboards
 
 The dashboards surface:
 
@@ -88,7 +88,7 @@ These dashboards reflect **how early AI platforms should be monitored in product
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 ```
 React Frontend (Vite)
@@ -107,7 +107,7 @@ All services are orchestrated via **Docker Compose**.
 
 ---
 
-## 🐳 Dockerized Deployment
+## Dockerized Deployment
 
 ### Prerequisites
 
@@ -166,7 +166,7 @@ This workflow mirrors **real production onboarding**.
 
 ---
 
-## 🔐 Security & Best Practices
+## Security & Best Practices
 
 * Secrets stored only in environment variables
 * `.env` excluded via `.gitignore`
@@ -175,17 +175,9 @@ This workflow mirrors **real production onboarding**.
 
 ---
 
-## 🧠 Why This Project Matters (Even at an Early Stage)
 
-✔ Shows **engineering discipline from day one**
-✔ Demonstrates **LLMOps & observability**, not just AI output
-✔ Designed for scale and monitoring, not demos
-✔ Clean separation of concerns
-✔ Strong foundation for future expansion
 
----
-
-## 🔮 Planned Future Evolution
+##  Planned Future Evolution
 
 Pravah is intentionally positioned as a **starting point** for a larger platform:
 
@@ -198,7 +190,7 @@ Pravah is intentionally positioned as a **starting point** for a larger platform
 
 ---
 
-## 👨‍💻 Author
+##  Author
 
 Built as a **foundational prototype** to demonstrate how modern AI systems should be designed, observed, and deployed from the very beginning.
 
