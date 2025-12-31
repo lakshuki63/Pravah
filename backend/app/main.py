@@ -129,6 +129,7 @@ def itinerary(
     duration_text: str,
 ):
     return itinerary_service.generate_itinerary(
+        
         source=source,
         destination=destination,
         distance=distance_text,

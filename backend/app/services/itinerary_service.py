@@ -4,6 +4,7 @@ import re
 import google.genai as genai
 from app.observability.datadog_client import send_metric
 
+
 class ItineraryService:
     def __init__(self, client: genai.Client):
         self.client = client
@@ -48,7 +49,7 @@ STRICT RULES:
 
             raw_text = response.text.strip()
 
-            # 🔎 Extract JSON safely (handles extra text if any)
+            # 🔎 Extract JSON safely
             match = re.search(r"\[.*\]", raw_text, re.DOTALL)
             if not match:
                 raise ValueError("No JSON array found in LLM response")
@@ -57,16 +58,46 @@ STRICT RULES:
 
             latency_ms = (time.time() - start_time) * 1000
 
-            # ✅ Success metrics
-            send_metric("llm.itinerary.latency_ms", latency_ms)
-            send_metric("llm.itinerary.success", 1)
-            send_metric("llm.itinerary.items_count", len(itinerary))
+            # -------------------------------------------------
+            # ✅ SUCCESS METRICS (DASHBOARD-COMPATIBLE)
+            # -------------------------------------------------
+
+            send_metric(
+                "pravah.llm.latency_ms",
+                latency_ms,
+                tags=["env:local", "service:pravah-backend"]
+            )
+
+            send_metric(
+                "pravah.ai.itinerary.stop.count",
+                len(itinerary),
+                tags=["env:local", "service:pravah-backend"]
+            )
 
             return itinerary
 
         except Exception as e:
-            # ❌ Failure metrics (VERY IMPORTANT)
-            send_metric("llm.itinerary.failure", 1)
+            latency_ms = (time.time() - start_time) * 1000
+
+            # -------------------------------------------------
+            # ❌ FAILURE + FALLBACK METRICS (CRITICAL)
+            # -------------------------------------------------
+
+            send_metric(
+                "pravah.llm.latency_ms",
+                latency_ms,
+                tags=["env:local", "service:pravah-backend"]
+            )
+
+            send_metric(
+                "pravah.ai.fallback.used",
+                1,
+                tags=[
+                    "env:local",
+                    "reason:itinerary_generation_failed",
+                    "service:pravah-backend"
+                ]
+            )
 
             return {
                 "error": "Failed to generate itinerary",

@@ -12,12 +12,21 @@ SERVICE_TAGS = [
     "version:v1"
 ]
 
-# ---------------------------------------------------------
-# LLM MEASUREMENT WRAPPER (USED BY AGENTS / SERVICES)
-# ---------------------------------------------------------
-
-def measure_llm_call(fn, agent_name: str, request_id: str, model="gemini-2.5-flash", env="local"):
+def measure_llm_call(
+    fn,
+    agent_name: str,
+    request_id: str,
+    model="gemini-2.5-flash",
+    env="local"
+):
     start = time.time()
+
+    tags = [
+        f"agent:{agent_name}",
+        f"model:{model}",
+        f"env:{env}",
+        *SERVICE_TAGS
+    ]
 
     try:
         result = fn()
@@ -32,16 +41,10 @@ def measure_llm_call(fn, agent_name: str, request_id: str, model="gemini-2.5-fla
             }
         )
 
-        tags = [
-            f"agent:{agent_name}",
-            f"model:{model}",
-            f"env:{env}",
-            *SERVICE_TAGS
-        ]
-
-        send_metric("pravah.llm.request.count", 1, tags)
-        send_metric("pravah.llm.latency_ms", latency_ms, tags)
-        send_metric("pravah.llm.response.success", 1, tags)
+        # 🔢 Core metrics
+        send_metric("pravah.llm.request.count", 1, tags, metric_type="count")
+        send_metric("pravah.llm.latency_ms", latency_ms, tags, metric_type="distribution")
+        send_metric("pravah.llm.response.success", 1, tags, metric_type="count")
 
         return result, latency_ms, None
 
@@ -58,15 +61,8 @@ def measure_llm_call(fn, agent_name: str, request_id: str, model="gemini-2.5-fla
             }
         )
 
-        tags = [
-            f"agent:{agent_name}",
-            f"model:{model}",
-            f"env:{env}",
-            *SERVICE_TAGS
-        ]
-
-        send_metric("pravah.llm.request.count", 1, tags)
-        send_metric("pravah.llm.latency_ms", latency_ms, tags)
-        send_metric("pravah.llm.response.failure", 1, tags)
+        send_metric("pravah.llm.request.count", 1, tags, metric_type="count")
+        send_metric("pravah.llm.latency_ms", latency_ms, tags, metric_type="distribution")
+        send_metric("pravah.llm.response.failure", 1, tags, metric_type="count")
 
         return None, latency_ms, e
