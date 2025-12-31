@@ -1,0 +1,44 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pravah-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DD_SERVICE: pravah-backend
+      DD_ENV: local
+      DD_VERSION: "1.0.0"
+    depends_on:
+      - datadog
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pravah-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  datadog:
+    image: datadog/agent:latest
+    container_name: datadog-agent
+    environment:
+      DD_API_KEY: ${DD_API_KEY}
+      DD_SITE: us5.datadoghq.com
+      DD_LOGS_ENABLED: "true"
+      DD_APM_ENABLED: "true"
+      DD_PROCESS_AGENT_ENABLED: "true"
+      DD_DOGSTATSD_NON_LOCAL_TRAFFIC: "true"
+      DD_CONTAINER_EXCLUDE: "name:datadog-agent"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
+    ports:
+      - "8125:8125/udp"
