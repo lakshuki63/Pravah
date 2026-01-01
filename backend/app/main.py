@@ -1,8 +1,7 @@
 # -------------------------------------------------------------------
 # Core Imports
 # -------------------------------------------------------------------
-from app.services.itinerary_service import ItineraryService
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
@@ -11,7 +10,6 @@ import google.genai as genai
 # -------------------------------------------------------------------
 # Project Imports
 # -------------------------------------------------------------------
-
 from app.observability.tracing import generate_request_id
 from app.services.orchestrator import TravelOrchestrator
 from app.observability.datadog_client import send_metric
@@ -21,7 +19,6 @@ from app.services.itinerary_service import ItineraryService
 # -------------------------------------------------------------------
 # Environment Setup
 # -------------------------------------------------------------------
-
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -29,15 +26,13 @@ if not GEMINI_API_KEY:
     raise RuntimeError("GEMINI_API_KEY not found in environment")
 
 # -------------------------------------------------------------------
-# Gemini Client Initialization ✅ (FIX)
+# Gemini Client
 # -------------------------------------------------------------------
-
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # -------------------------------------------------------------------
 # FastAPI App
 # -------------------------------------------------------------------
-
 app = FastAPI(
     title="AI Travel LLMOps",
     description="Production-grade, observable multi-agent AI travel assistant",
@@ -45,9 +40,8 @@ app = FastAPI(
 )
 
 # -------------------------------------------------------------------
-# CORS (React Frontend)
+# CORS
 # -------------------------------------------------------------------
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -64,7 +58,6 @@ app.add_middleware(
 # -------------------------------------------------------------------
 # Startup Hook
 # -------------------------------------------------------------------
-
 @app.on_event("startup")
 def startup_event():
     print("🚀 Backend starting — Datadog test metric")
@@ -73,36 +66,40 @@ def startup_event():
 # -------------------------------------------------------------------
 # Core Services
 # -------------------------------------------------------------------
-
 orchestrator = TravelOrchestrator()
 itinerary_service = ItineraryService(client)
 
 # -------------------------------------------------------------------
 # Health Check
 # -------------------------------------------------------------------
-
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 # -------------------------------------------------------------------
-# Route API (Google Maps)
+# Route API (SAFE)
 # -------------------------------------------------------------------
-
 @app.get("/route")
-def route(source: str, destination: str):
-    return get_route(source, destination)
+def route(source: str = "", destination: str = ""):
+    if not source.strip() or not destination.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Source and destination must be provided"
+        )
+
+    try:
+        return get_route(source, destination)
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=str(e)
+        )
 
 # -------------------------------------------------------------------
-# Trip Planning (Agent Orchestrator)
+# Trip Planning
 # -------------------------------------------------------------------
-
 @app.get("/plan-trip")
-def plan_trip(
-    source: str,
-    destination: str,
-    preferences: str
-):
+def plan_trip(source: str, destination: str, preferences: str):
     request_id = generate_request_id()
 
     plan = orchestrator.plan_trip(
@@ -118,9 +115,8 @@ def plan_trip(
     }
 
 # -------------------------------------------------------------------
-# Itinerary (Gemini LLM)
+# Itinerary (LLM)
 # -------------------------------------------------------------------
-
 @app.get("/itinerary")
 def itinerary(
     source: str,
@@ -129,7 +125,6 @@ def itinerary(
     duration_text: str,
 ):
     return itinerary_service.generate_itinerary(
-        
         source=source,
         destination=destination,
         distance=distance_text,

@@ -13,63 +13,43 @@ const containerStyle = {
 export default function MapView({ source, destination, onRouteLoaded }) {
   const [directions, setDirections] = useState(null);
   const [markers, setMarkers] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  function placeMarkersUsingSteps(directionsResult, stops) {
-    const steps = directionsResult.routes[0].legs[0].steps;
-    const path = directionsResult.routes[0].overview_path;
+  async function geocodeStop(name) {
+    const geocoder = new window.google.maps.Geocoder();
 
-    const generatedMarkers = [];
-    const pathChunk = Math.floor(path.length / (stops.length + 1));
-
-    stops.forEach((stop, idx) => {
-      const stopName = stop.name.toLowerCase();
-
-      const matchedStep = steps.find((step) =>
-        step.instructions
-          .replace(/<[^>]+>/g, "")
-          .toLowerCase()
-          .includes(stopName.split(" ")[0])
-      );
-
-      if (matchedStep) {
-        generatedMarkers.push({
-          position: {
-            lat: matchedStep.end_location.lat(),
-            lng: matchedStep.end_location.lng(),
-          },
-          label: String(idx + 1),
-        });
-      } else {
-        const fallbackPoint = path[pathChunk * (idx + 1)];
-        if (fallbackPoint) {
-          generatedMarkers.push({
-            position: {
-              lat: fallbackPoint.lat(),
-              lng: fallbackPoint.lng(),
-            },
-            label: String(idx + 1),
-          });
+    return new Promise((resolve) => {
+      geocoder.geocode({ address: name }, (results, status) => {
+        if (status === "OK" && results[0]) {
+          resolve(results[0].geometry.location);
+        } else {
+          resolve(null);
         }
-      }
+      });
     });
-
-    setMarkers(generatedMarkers);
   }
 
   async function loadRoute() {
-    // 1️⃣ Fetch backend route (distance + duration)
+    if (!source || !destination) return;
+
+    setLoading(true);
+    setMarkers([]);
+
+    // 1️⃣ Fetch route info
     const routeRes = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/route?source=${source}&destination=${destination}`
+      `${import.meta.env.VITE_BACKEND_URL}/route?source=${encodeURIComponent(
+        source
+      )}&destination=${encodeURIComponent(destination)}`
     );
+
     const routeData = await routeRes.json();
 
-    // 2️⃣ Draw route on map
+    // 2️⃣ Draw route
     const directionsService = new window.google.maps.DirectionsService();
-
     directionsService.route(
       {
         origin: source,
-        destination: destination,
+        destination,
         travelMode: window.google.maps.TravelMode.DRIVING,
       },
       async (result, status) => {
@@ -77,7 +57,7 @@ export default function MapView({ source, destination, onRouteLoaded }) {
           setDirections(result);
           onRouteLoaded(routeData);
 
-          // 3️⃣ Fetch AI itinerary
+          // 3️⃣ Fetch itinerary
           const itineraryRes = await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/itinerary` +
               `?source=${source}` +
@@ -86,24 +66,36 @@ export default function MapView({ source, destination, onRouteLoaded }) {
               `&duration_text=${routeData.duration_text}`
           );
 
-          const itineraryResponse = await itineraryRes.json();
-          const itinerary = itineraryResponse.itinerary ?? itineraryResponse;
+          const itinerary = await itineraryRes.json();
 
           if (Array.isArray(itinerary)) {
-            onRouteLoaded((prev) => ({
-              ...prev,
-              itinerary,
-            }));
-            placeMarkersUsingSteps(result, itinerary);
+            onRouteLoaded((prev) => ({ ...prev, itinerary }));
+
+            // 4️⃣ Geocode & place markers
+            const stopMarkers = [];
+            for (let i = 0; i < itinerary.length; i++) {
+              const loc = await geocodeStop(itinerary[i].name);
+              if (loc) {
+                stopMarkers.push({
+                  position: loc,
+                  label: String(i + 1),
+                });
+              }
+            }
+
+            setMarkers(stopMarkers);
           }
         }
+        setLoading(false);
       }
     );
   }
 
   return (
     <>
-      <button onClick={loadRoute}>Show Route</button>
+      <button onClick={loadRoute} disabled={loading}>
+        {loading ? "Loading…" : "Show Route"}
+      </button>
 
       <GoogleMap
         mapContainerStyle={containerStyle}
@@ -111,8 +103,8 @@ export default function MapView({ source, destination, onRouteLoaded }) {
         zoom={6}
       >
         {directions && <DirectionsRenderer directions={directions} />}
-        {markers.map((m, idx) => (
-          <Marker key={idx} position={m.position} label={m.label} />
+        {markers.map((m, i) => (
+          <Marker key={i} position={m.position} label={m.label} />
         ))}
       </GoogleMap>
     </>
